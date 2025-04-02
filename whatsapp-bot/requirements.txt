@@ -1,0 +1,17 @@
+pywa==2.7.0
+fastapi==0.109.2
+uvicorn==0.27.1
+python-dotenv==1.0.0
+httpx==0.25.2
+modal==0.56.4596
+langchain_anthropic
+langchain
+langchain-openai
+langchain-groq>=0.1.0
+openai
+firebase_admin
+tweepy
+qdrant_client
+langfuse
+requests>=2.31.0
+python-telegram-bot==20.6
