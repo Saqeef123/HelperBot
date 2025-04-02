@@ -40,7 +40,6 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Social Media Bot")
 
-# Initialize WhatsApp client
 wa = WhatsApp(
     phone_id=WHATSAPP_PHONE_ID,
     token=WHATSAPP_TOKEN,
@@ -65,7 +64,6 @@ llm = ChatGroq(
     temperature=0.2,
 )
 
-# Create a prompt template with the FAQ data
 faq_text = "\n".join([f"Q: {question}\nA: {answer}" for question, answer in faq_data.items()])
 template = f"""You are a helpful assistant for an internship program at IAC (Industry Academia Community).
 Your responses should be concise and well-formatted for messaging platforms.
@@ -81,7 +79,6 @@ AI: """
 
 prompt = PromptTemplate(input_variables=["history", "input"], template=template)
 
-# User conversation memories - shared across platforms
 user_memories = {}
 
 # Instagram API URL
@@ -241,14 +238,12 @@ def handle_whatsapp_message(client: WhatsApp, msg: types.Message):
     logger.info(f"Received WhatsApp message from {msg.from_user.name}: {msg.text}")
     
     user_message = msg.text.lower()
-    user_id = f"whatsapp_{msg.from_user.wa_id}"  # Prefix with platform for multi-platform support
+    user_id = f"whatsapp_{msg.from_user.wa_id}" 
     
     try:
-        # Get user-specific memory or create a new one
         if user_id not in user_memories:
             user_memories[user_id] = ConversationBufferMemory(return_messages=True)
         
-        # Create a user-specific conversation chain
         user_chain = ConversationChain(
             llm=llm,
             prompt=prompt,
@@ -256,11 +251,9 @@ def handle_whatsapp_message(client: WhatsApp, msg: types.Message):
             verbose=False
         )
         
-        # Get response from the AI
         response = user_chain.predict(input=user_message)
         logger.info(f"AI response: {response}")
         
-        # Send the response to the user
         msg.reply_text(text=response)
     
     except Exception as e:
@@ -276,11 +269,9 @@ async def handle_telegram_message(update: Update, context: CallbackContext):
     logger.info(f"Received Telegram message from {update.effective_user.first_name}: {message_text}")
     
     try:
-        # Get user-specific memory or create a new one
         if user_id not in user_memories:
             user_memories[user_id] = ConversationBufferMemory(return_messages=True)
         
-        # Create a user-specific conversation chain
         user_chain = ConversationChain(
             llm=llm,
             prompt=prompt,
@@ -288,11 +279,9 @@ async def handle_telegram_message(update: Update, context: CallbackContext):
             verbose=False
         )
         
-        # Get response from the AI
         response = user_chain.predict(input=message_text)
         logger.info(f"AI response for Telegram: {response}")
         
-        # Send the response
         await update.message.reply_text(response)
     
     except Exception as e:
@@ -302,15 +291,12 @@ async def handle_telegram_message(update: Update, context: CallbackContext):
 
 async def setup_telegram_handlers():
     """Set up Telegram message handlers"""
-    # Command handler for /start
     async def start_command(update: Update, context: CallbackContext):
         await update.message.reply_text("Hello! I'm the IAC internship assistant bot. How can I help you?")
     
-    # Add handlers
     telegram_app.add_handler(CommandHandler("start", start_command))
     telegram_app.add_handler(MessageHandler(tg_filters.TEXT & ~tg_filters.COMMAND, handle_telegram_message))
     
-    # Start polling (in a non-blocking way)
     await telegram_app.initialize()
     await telegram_app.start()
     logger.info("Telegram bot started")
@@ -354,7 +340,6 @@ async def instagram_webhook(request: Request):
         data = await request.json()
         logger.info(f"Received Instagram webhook data: {data}")
         
-        # Try different Instagram message formats
         if 'entry' in data:
             for entry in data['entry']:
                 # Check standard messaging format
@@ -366,14 +351,11 @@ async def instagram_webhook(request: Request):
                             message_text = messaging_event['message']['text']
                             logger.info(f"Found text message from sender {sender_id}: {message_text}")
                             
-                            # Process the message with our AI
                             user_id = f"instagram_{sender_id}"
                             
-                            # Get or create user memory
                             if user_id not in user_memories:
                                 user_memories[user_id] = ConversationBufferMemory(return_messages=True)
                             
-                            # Create conversation chain
                             user_chain = ConversationChain(
                                 llm=llm,
                                 prompt=prompt,
@@ -381,11 +363,9 @@ async def instagram_webhook(request: Request):
                                 verbose=False
                             )
                             
-                            # Get AI response
                             response = user_chain.predict(input=message_text)
                             logger.info(f"AI response for Instagram: {response}")
                             
-                            # Send response back to Instagram
                             await send_instagram_message(sender_id, response)
                 
                 # Check for the changes array format (Instagram Graph API)
@@ -402,14 +382,11 @@ async def instagram_webhook(request: Request):
                                         message_text = message['text']['body']
                                         logger.info(f"Found Graph API message from sender {sender_id}: {message_text}")
                                         
-                                        # Process with AI and respond
                                         user_id = f"instagram_graph_{sender_id}"
                                         
-                                        # Get or create user memory
                                         if user_id not in user_memories:
                                             user_memories[user_id] = ConversationBufferMemory(return_messages=True)
                                         
-                                        # Create conversation chain
                                         user_chain = ConversationChain(
                                             llm=llm,
                                             prompt=prompt,
@@ -417,17 +394,14 @@ async def instagram_webhook(request: Request):
                                             verbose=False
                                         )
                                         
-                                        # Get AI response
                                         response = user_chain.predict(input=message_text)
                                         logger.info(f"AI response for Instagram Graph: {response}")
                                         
-                                        # Send response back to Instagram
                                         await send_instagram_message(sender_id, response)
     except Exception as e:
         logger.error(f"Error processing Instagram webhook: {e}")
         logger.exception("Detailed exception:")
     
-    # Return a 200 OK to acknowledge receipt of the webhook
     return {"status": "ok"}
 
 @app.get("/instagram-webhook")
@@ -459,7 +433,6 @@ async def facebook_webhook(request: Request):
     logger.info(f"Received POST request to /facebook-webhook. Headers: {request.headers}")
     logger.info(f"Raw body: {body_text}")
     
-    # Verify this is a legitimate request from Meta
     if signature and not verify_webhook_signature(body, signature, FACEBOOK_APP_SECRET):
         logger.warning(f"Invalid signature for Facebook webhook: {signature}")
         raise HTTPException(status_code=403, detail="Invalid signature")
@@ -468,7 +441,6 @@ async def facebook_webhook(request: Request):
         data = await request.json()
         logger.info(f"Received Facebook webhook data: {data}")
         
-        # Process Facebook Messenger events
         if 'entry' in data:
             for entry in data['entry']:
                 # Standard Facebook Messenger messaging format
@@ -480,14 +452,11 @@ async def facebook_webhook(request: Request):
                             message_text = messaging_event['message']['text']
                             logger.info(f"Found Facebook message from sender {sender_id}: {message_text}")
                             
-                            # Process the message with our AI
                             user_id = f"facebook_{sender_id}"
                             
-                            # Get or create user memory
                             if user_id not in user_memories:
                                 user_memories[user_id] = ConversationBufferMemory(return_messages=True)
                             
-                            # Create conversation chain
                             user_chain = ConversationChain(
                                 llm=llm,
                                 prompt=prompt,
@@ -495,17 +464,14 @@ async def facebook_webhook(request: Request):
                                 verbose=False
                             )
                             
-                            # Get AI response
                             response = user_chain.predict(input=message_text)
                             logger.info(f"AI response for Facebook: {response}")
                             
-                            # Send response back to Facebook
                             await send_facebook_message(sender_id, response)
     except Exception as e:
         logger.error(f"Error processing Facebook webhook: {e}")
         logger.exception("Detailed exception:")
     
-    # Return a 200 OK to acknowledge receipt of the webhook
     return {"status": "ok"}
 
 @app.get("/facebook-webhook")
@@ -534,25 +500,20 @@ async def telegram_webhook(request: Request):
         update_data = await request.json()
         logger.info(f"Received Telegram webhook data: {update_data}")
         
-        # Process the update
         if "message" in update_data and "text" in update_data["message"]:
             chat_id = update_data["message"]["chat"]["id"]
             user_id = update_data["message"]["from"]["id"]
             message_text = update_data["message"]["text"]
             
-            # Get the first name if available
             first_name = update_data["message"]["from"].get("first_name", "User")
             
             logger.info(f"Processing Telegram message from {first_name}: {message_text}")
             
-            # Process with AI
             user_id = f"telegram_{user_id}"
             
-            # Get or create user memory
             if user_id not in user_memories:
                 user_memories[user_id] = ConversationBufferMemory(return_messages=True)
             
-            # Create conversation chain
             user_chain = ConversationChain(
                 llm=llm,
                 prompt=prompt,
@@ -560,18 +521,15 @@ async def telegram_webhook(request: Request):
                 verbose=False
             )
             
-            # Get AI response
             response = user_chain.predict(input=message_text)
             logger.info(f"AI response for Telegram: {response}")
             
-            # Send response
             await send_telegram_message(chat_id, response)
     
     except Exception as e:
         logger.error(f"Error processing Telegram webhook: {e}")
         logger.exception("Detailed exception:")
     
-    # Return 200 OK
     return {"ok": True}
 
 async def send_telegram_message(chat_id: int, text: str):
