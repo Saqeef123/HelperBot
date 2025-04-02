@@ -11,8 +11,6 @@ WHATSAPP_APP_ID = os.getenv("WHATSAPP_APP_ID")
 WHATSAPP_APP_SECRET = os.getenv("WHATSAPP_APP_SECRET")
 VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
 
-# For ngrok deployment, you'll need to update this URL each time you start ngrok
-# until you have a paid account with a fixed subdomain
 CALLBACK_URL = os.getenv("CALLBACK_URL", "https://your-ngrok-url.ngrok.io/webhook")
 
 # Instagram API configuration
